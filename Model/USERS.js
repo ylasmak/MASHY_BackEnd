@@ -12,19 +12,11 @@ mongoose.connect( url);
 var CercleDef = new Schema({ Login: String ,ActiveTracking :  Boolean});
 
 var GeojsonfeatureSchema = new Schema({
-    
-    'geometry' : {
         type: {type: String},
         'coordinates' : {
             'type' : [Number],
             'index' : '2dsphere'
-        }
-    },
-    'properties' : {
-        'speed' : Number,
-        'measurement' : Number,
-        'quality' : String
-    }
+        }    
 });
 
 var USERS = new Schema({
@@ -34,7 +26,7 @@ var USERS = new Schema({
   cercle: [CercleDef],
   location :GeojsonfeatureSchema,  
   activate_tracking :{ type : Boolean } ,  
-  created_at: Date
+  update_at: String
 });
 
 

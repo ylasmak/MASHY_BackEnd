@@ -26,12 +26,8 @@ router.get('/', function(req, res) {
             console.log(err);
 
         } else {
-            res.send('MASHY V0.1')
-            
-           // res.send('pages/index.ejs', {
-             //   nbre_Domaine: count
-            //})
-            console.log(count)
+            res.send('MASHY V0.1')            
+                    
         }
 
 
@@ -46,13 +42,12 @@ router.post('/connexion',urlencodedParser, function(req, res) {
    
     var login  = req.body.Login;
     var password = req.body.Password;
- 
    
     users.findOne({Login : login,Password : password}).exec(function(err,user)
                {
         if(err)
             {
-                console.log(err)
+              
                 res.send("{sucess : 0}")
             }
          else
@@ -63,7 +58,9 @@ router.post('/connexion',urlencodedParser, function(req, res) {
                      }
                  else
                      {
-                       
+                         user.update_at = user.update_at.toUTCString()
+                         console.log(user.update_at)
+                         console.log(user.update_at.toUTCString())
                          res.send("{sucess : 1, message : "+user+"}")
                      }
              }
@@ -75,15 +72,11 @@ router.post('/connexion',urlencodedParser, function(req, res) {
 router.post('/lookup',urlencodedParser,function(req,res)
 {
     
-    
-    var parmeters = req.body.Parmeters;    
-   
+    var parmeters = req.body.Parmeters;   
     var jsonContent = JSON.parse(parmeters);
-    requesterLogin =jsonContent.Login
-    myPositioin = jsonContent.Location
     
-    console.log(requesterLogin)
-    console.log(myPositioin)
+    requesterLogin =jsonContent.Login;
+    myPositioin = jsonContent.Location;
     
     users.findOne({Login : requesterLogin}).exec(function(err,user)
      {         
@@ -91,105 +84,99 @@ router.post('/lookup',urlencodedParser,function(req,res)
          if(err)
             {
                 console.log(err)
-                res.send("{sucess : 0, error : "+err+"}")
+                res.json("{sucess : 0, error : "+err+"}")
             }
          else
-             {       
-                 
-                 if(myPositioin)
+             { 
+                 if(!user)
                      {
-                         console.log('-----AQW-----------')
-                         console.log(user.location)
-                         console.log(user.location.coordinates)
-                         
-                         
-                         
-                          users.update({'Login': requesterLogin}, { $set: { geometry : myPositioin }},
-                               function(err,result)
-                               {
-                                    if(err)
-                                        {
-                                            console.log(err)
-                                        }
-                                    else
-                                        {
-                                            console.log(result)
-                                        }
-
-                                })
+                           res.json("{sucess : -1, error : Login Error}")
                      }
-                        
-                var array_column = new Array();               
-                if ( user.cercle.length > 0)
-                {  
-                
-                        for(var i = 0;i< user.cercle.length; i++)
-                           {
-                             var person =  user.cercle[i];
-                             if(person.ActiveTracking)
-                                {
-                                    array_column.push(person.Login)
-                                }                      
-                           }
-                    
-
-
-                         users.update({'Login': {$in : array_column }}, { $set: { activate_tracking : true }}, {multi: true},function(err,result)
-                            {        
-                                 if(err)
-                                 {
-                                     console.log(err)
-                                      res.send("{sucess : 0, error : "+err+"}")
-                                 }                         
-                             }        
-                        )
-                         
-                          users.aggregate([{
-                                $project: {
-                                    Login: 1,
-                                    location: 1,
-                                    _id : -1
-                                }},
-                                             {$match : 
-                                {
-                                   Login : {$in : array_column} 
-                                }
-
-                            }], function(err, result) {
-
-                              if(err)
-                                  {
-                                     
-                                      res.send("{sucess : 0, error : "+err+"}")
-                                  }
-                                else
-                                    {
-                                        
-                                        
-                                        for(var i = 0;i< result.length; i++)
-                                           {
-                                                                 
-                                           }
-                                        
-                                        res.json({sucess : 1, current : user , result : result}) 
-                                       
-                                         
-                                    }
-
-                            }
-                        )   
-                    
-                }
+                 
                  else
                      {
-                          res.json({sucess : 1, current : user }) 
+                         if(myPositioin)
+                             {
+                                 var datetime = new Date().toUTCString();
+                                  users.update({'Login': requesterLogin}, { $set: { location :  {  "type" : "Point",
+                                                                                                            "coordinates" : myPositioin
+                                                                                                        },update_at : datetime  }},
+                                       function(err,result)
+                                       {
+                                            if(err)
+                                                {
+                                                    console.log(err)
+                                                }
+                                            else
+                                                {
+                                                    console.log(result)
+                                                }
+
+                                        })
+                             }
+
+                         console.log(user)
+                        var array_column = new Array();               
+                        if (user.cercle && user.cercle.length > 0)
+                        {  
+
+                                for(var i = 0;i< user.cercle.length; i++)
+                                   {
+                                     var person =  user.cercle[i];
+                                     if(person.ActiveTracking)
+                                        {
+                                            array_column.push(person.Login)
+                                        }                      
+                                   }
+
+                                 users.update({'Login': {$in : array_column }}, { $set: { activate_tracking : true }}, {multi: true},function(err,result)
+                                    {        
+                                         if(err)
+                                         {
+                                             console.log(err)
+                                              res.json("{sucess : 0, error : "+err+"}")
+                                         }                         
+                                     }        
+                                )
+
+                                  users.aggregate([{
+                                        $project: {
+                                            Login: 1,
+                                            location: 1,
+                                            _id : -1
+                                        }},
+                                                     {$match : 
+                                        {
+                                           Login : {$in : array_column} 
+                                        }
+
+                                    }], function(err, result) {
+
+                                      if(err)
+                                          {
+
+                                              res.json("{sucess : 0, error : "+err+"}")
+                                          }
+                                        else
+                                            {
+                                                for(var i = 0;i< result.length; i++)
+                                                   {
+
+                                                   }
+
+                                                res.json({sucess : 1, current : user , result : result})                                       
+
+                                            }
+                                    }
+                                )   
+
+                        }
+                         else
+                         {
+                              res.json({sucess : 1, current : user }) 
+                         }
+                 
                      }
-                          
-                 
-                                  
-                   
-                 
-               
              }
           }
     )}
