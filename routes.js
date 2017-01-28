@@ -58,9 +58,7 @@ router.post('/connexion',urlencodedParser, function(req, res) {
                      }
                  else
                      {
-                         user.update_at = user.update_at.toUTCString()
-                         console.log(user.update_at)
-                         console.log(user.update_at.toUTCString())
+                       
                          res.send("{sucess : 1, message : "+user+"}")
                      }
              }
