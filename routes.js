@@ -26,7 +26,7 @@ router.get('/', function(req, res) {
             console.log(err);
 
         } else {
-            res.send('MASHY V0.1')            
+            res.send('MASHY V0.3')            
                     
         }
 
@@ -36,6 +36,16 @@ router.get('/', function(req, res) {
 
     ;
 });
+
+
+router.get('/apk', function(req, res) {
+    
+    path = __dirname + '/apk/app-debug.apk'
+    
+  res.download(path);
+    
+}
+           );
 
 router.post('/connexion',urlencodedParser, function(req, res) {
     
@@ -81,7 +91,7 @@ router.post('/lookup',urlencodedParser,function(req,res)
          
          if(err)
             {
-                console.log(err)
+         
                 res.json("{sucess : 0, error : "+err+"}")
             }
          else
@@ -113,7 +123,7 @@ router.post('/lookup',urlencodedParser,function(req,res)
                                         })
                              }
 
-                         console.log(user)
+                         
                         var array_column = new Array();               
                         if (user.cercle && user.cercle.length > 0)
                         {  
@@ -131,16 +141,17 @@ router.post('/lookup',urlencodedParser,function(req,res)
                                     {        
                                          if(err)
                                          {
-                                             console.log(err)
+                                             
                                               res.json("{sucess : 0, error : "+err+"}")
                                          }                         
                                      }        
                                 )
 
                                   users.aggregate([{
-                                        $project: {
+                                      $project: {
                                             Login: 1,
                                             location: 1,
+                                            update_at:1,
                                             _id : -1
                                         }},
                                                      {$match : 
@@ -157,11 +168,7 @@ router.post('/lookup',urlencodedParser,function(req,res)
                                           }
                                         else
                                             {
-                                                for(var i = 0;i< result.length; i++)
-                                                   {
-
-                                                   }
-
+                                               
                                                 res.json({sucess : 1, current : user , result : result})                                       
 
                                             }
