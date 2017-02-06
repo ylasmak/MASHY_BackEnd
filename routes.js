@@ -1,8 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var multer = require('multer');
-var fs = require('fs');
-var parse = require('csv-parse');
+var otp = require('otplib/lib/totp');
+
 
 
 
@@ -13,9 +12,7 @@ var router = express.Router();
 var urlencodedParser = bodyParser.urlencoded({
     extended: false
 })
-var upload = multer({
-    dest: './uploads/'
-});
+
 //middle ware that is specific to this router
 
 
@@ -30,11 +27,7 @@ router.get('/', function(req, res) {
                     
         }
 
-
     });
-
-
-    ;
 });
 
 
@@ -49,15 +42,139 @@ router.get('/apk', function(req, res) {
 
 router.post('/connexion',urlencodedParser, function(req, res) {
     
+    
+    var PhoneNumber  = req.body.PhoneNumber;
+    if(PhoneNumber)
+        {
+            PhoneNumber = '+'+PhoneNumber;    
+            users.findOne({Phone : PhoneNumber}).exec(function(err,user)
+                           {
+                    if(err)
+                        {
+
+                            res.send("{sucess : 0}")
+                        }
+                     else
+                         {
+                             if(!user)
+                                 {
+                                     res.send("{sucess : -1, message : 'ErrorLoginPassword'}")
+                                 }
+                             else
+                                 {
+
+                                     res.send("{sucess : 1, message : "+user+"}")
+                                 }
+                         }
+
+                })
+        }
+    else
+        {
+            res.send("{sucess : 0}");
+        }
+    
+});
+
+router.post('/verify',urlencodedParser, function(req, res) {
+    
+   var PhoneNumber  = req.body.PhoneNumber;
+   var OTPCode  = req.body.OTPCode;
+    
+   console.log('verify')
+    
+    
+     
+    if(PhoneNumber)
+        {
+            PhoneNumber = '+'+PhoneNumber.trim();
+            console.log(PhoneNumber)
+            
+            users.findOne({Phone : PhoneNumber}).exec(function(err,user)
+                           {
+                    if(err)
+                        {
+
+                            res.send("{sucess : 0}")
+                        }
+                     else
+                         {
+                             if(!user)
+                                 {
+                                     res.send("{sucess : -1, message : 'ErrorLoginPassword'}")
+                                 }
+                             else
+                                 {
+                                     var otp = require('otplib/lib/totp');
+                                     var secret = user.secret ;
+                                     console.log(secret);
+                                     var status = otp.check(OTPCode, secret);
+                                     if(status)
+                                         {
+                                                user.activate_tracking = true;
+                                                user.save(function(err, domaine) {
+
+                                                                        if (err) {
+                                                                           res.send("{sucess : -1, message : 'ErrorUpdating'}")
+                                                                        }
+                                                     else
+                                                         {
+                                                              res.send("{sucess : 1, message : "+user+"}")
+                                                         }
+                                                 })
+                                         }
+                                      else
+                                          {
+                                              res.send("{sucess : -2, message : 'Error VerificationCode'}")
+                                          }
+                                     
+                                    
+                                 }
+                         }
+
+                })
+        }
+    else
+        {
+            res.send("{sucess : 0}");
+        }
    
-    var login  = req.body.Login;
-    var password = req.body.Password;
    
-    users.findOne({Login : login,Password : password}).exec(function(err,user)
-               {
+    
+});
+
+router.post('/register',urlencodedParser, function(req, res) {
+    
+    
+  
+    var SerialNumber  = req.body.SerialNumber;
+    var PhoneNumber  = req.body.PhoneNumber;
+    var email = req.body.Email;
+    
+    PhoneNumber = '+'+PhoneNumber.trim();
+    
+    console.log(PhoneNumber)
+    console.log(email) 
+    
+    var secret = otp.utils.generateSecret();
+
+   
+    var contact =  new users({
+          Login : email,
+          Phone : PhoneNumber,
+          SerialNumber : SerialNumber,
+          activate_tracking : false,
+          secret :secret,
+          update_at : new Date().toUTCString()
+     });
+  
+  
+            
+     contact.save(function(err, user) {
         if(err)
             {
               
+                console.log(err)
                 res.send("{sucess : 0}")
             }
          else
@@ -69,7 +186,36 @@ router.post('/connexion',urlencodedParser, function(req, res) {
                  else
                      {
                        
-                         res.send("{sucess : 1, message : "+user+"}")
+                        // Twilio Credentials
+                        var accountSid = 'AC2f9abe85ad8dffdb2dd94f9e975ce8f9';
+                        var authToken = 'f840a2eaaf3f7d1a1c6cf89b50610789';
+
+                        //require the Twilio module and create a REST client
+                        var client = require('twilio')(accountSid, authToken);
+                         otp.Option()
+                         var code = otp.generate(secret);
+                        
+                         console.log(secret)
+                         console.log(code)
+                         
+                          var status = otp.check(code, secret);
+                         console.log(status);
+                       /* client.messages.create({
+                            to: PhoneNumber,
+                            from: '+14438254761',
+                            body: code,
+                        }, function (err, message) {
+                           if(err)
+                               {
+                                   res.send("{sucess : -1, message : 'Error Sending confirmation email'}")
+                               }
+                            else
+                                {
+                                    req.session.secret = secret; 
+                                    res.send("{sucess : 1, message : "+user+"}")
+                                }
+                        }); */
+                        
                      }
              }
         
@@ -80,6 +226,7 @@ router.post('/connexion',urlencodedParser, function(req, res) {
 router.post('/lookup',urlencodedParser,function(req,res)
 {
     
+    console.log(req.body)
     var parmeters = req.body.Parmeters;   
     var jsonContent = JSON.parse(parmeters);
     

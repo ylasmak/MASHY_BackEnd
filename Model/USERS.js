@@ -22,10 +22,12 @@ var GeojsonfeatureSchema = new Schema({
 var USERS = new Schema({
 
   Login: { type: String, required: true, unique: true },
-  Password: { type: String, required: true },
+  Phone: { type: String, required: true, unique: true },
+  SerialNumber : {type: String, required: true, unique: true}, 
   cercle: [CercleDef],
   location :GeojsonfeatureSchema,  
-  activate_tracking :{ type : Boolean } ,  
+  activate_tracking :{ type : Boolean } , 
+  secret : String,    
   update_at: String
 });
 
