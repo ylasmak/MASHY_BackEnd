@@ -6,6 +6,7 @@ var otp = require('otplib/lib/totp');
 
 
 var users = require('./Model/USERS');
+var country = require('./Model/countryCode');
 var mongo = require('./data_base/mongodb');
 
 var router = express.Router();
@@ -13,6 +14,9 @@ var urlencodedParser = bodyParser.urlencoded({
     extended: false
 })
 
+//twilio token
+var accountSid = 'AC2f9abe85ad8dffdb2dd94f9e975ce8f9';
+var authToken = 'f840a2eaaf3f7d1a1c6cf89b50610789';
 //middle ware that is specific to this router
 
 
@@ -23,7 +27,7 @@ router.get('/', function(req, res) {
             console.log(err);
 
         } else {
-            res.send('MASHY V0.3')            
+            res.send('MASHY V0.5')           
                     
         }
 
@@ -43,22 +47,56 @@ router.get('/apk', function(req, res) {
 router.post('/connexion',urlencodedParser, function(req, res) {
     
     
-    var PhoneNumber  = req.body.PhoneNumber;
+    var PhoneNumber   = req.body.PhoneNumber;
+    var SerialNumber  = req.body.SerialNumber;
+    var CountryCode = req.body.CountryCode;
+    
+    console.log(PhoneNumber)
+    console.log(SerialNumber)
+    console.log(CountryCode)
+    if(CountryCode)
+        {
+            CountryCode = CountryCode.toUpperCase();
+        }
     if(PhoneNumber)
         {
-            PhoneNumber = '+'+PhoneNumber;    
-            users.findOne({Phone : PhoneNumber}).exec(function(err,user)
+           if(!PhoneNumber.startsWith("+"))
+               {
+                    PhoneNumber = '+'+PhoneNumber;    
+               }
+            users.findOne({Phone : PhoneNumber,SerialNumber : SerialNumber}).exec(function(err,user)
                            {
                     if(err)
                         {
 
+                           console.log(err)
                             res.send("{sucess : 0}")
                         }
                      else
                          {
                              if(!user)
-                                 {
-                                     res.send("{sucess : -1, message : 'ErrorLoginPassword'}")
+                                 { 
+                                     country.findOne({'ISO2' : CountryCode}).exec(function(err,countryResult)
+                                     {
+                                            if(err)
+                                                {
+                                                   console.log(err)
+                                                   res.send("{sucess : 0}")
+                                                }
+                                            else
+                                                {
+                                                    
+                                                    if(countryResult)
+                                                        {
+                                                            res.send("{sucess : -1, message : 'ErrorLogin' ,'Country' : "+countryResult+"}")
+                                                        }
+                                                        else
+                                                            {
+                                                                 res.send("{sucess : -1, message : 'ErrorLogin' }")
+                                                            }
+                                                }
+                                        });
+                                     
                                  }
                              else
                                  {
@@ -87,7 +125,10 @@ router.post('/verify',urlencodedParser, function(req, res) {
      
     if(PhoneNumber)
         {
-            PhoneNumber = '+'+PhoneNumber.trim();
+             if(!PhoneNumber.startsWith("+"))
+               {
+                    PhoneNumber = '+'+PhoneNumber;    
+               }
             console.log(PhoneNumber)
             
             users.findOne({Phone : PhoneNumber}).exec(function(err,user)
@@ -95,12 +136,14 @@ router.post('/verify',urlencodedParser, function(req, res) {
                     if(err)
                         {
 
+                            console.log(err)
                             res.send("{sucess : 0}")
                         }
                      else
                          {
                              if(!user)
                                  {
+                                   console.log('user not found')
                                      res.send("{sucess : -1, message : 'ErrorLoginPassword'}")
                                  }
                              else
@@ -109,6 +152,7 @@ router.post('/verify',urlencodedParser, function(req, res) {
                                      var secret = user.secret ;
                                      console.log(secret);
                                      var status = otp.check(OTPCode, secret);
+                                     console.log(status)
                                      if(status)
                                          {
                                                 user.activate_tracking = true;
@@ -151,8 +195,14 @@ router.post('/register',urlencodedParser, function(req, res) {
     var PhoneNumber  = req.body.PhoneNumber;
     var email = req.body.Email;
     
-    PhoneNumber = '+'+PhoneNumber.trim();
+    console.log("register")
     
+    if(!PhoneNumber.startsWith("+"))
+               {
+                    PhoneNumber = '+'+PhoneNumber;    
+               }
+    
+    console.log(SerialNumber)
     console.log(PhoneNumber)
     console.log(email) 
     
@@ -186,20 +236,19 @@ router.post('/register',urlencodedParser, function(req, res) {
                  else
                      {
                        
-                        // Twilio Credentials
-                        var accountSid = 'AC2f9abe85ad8dffdb2dd94f9e975ce8f9';
-                        var authToken = 'f840a2eaaf3f7d1a1c6cf89b50610789';
+                       // Twilio Credentials
+                       // var accountSid = 'AC2f9abe85ad8dffdb2dd94f9e975ce8f9';
+                       // var authToken = 'f840a2eaaf3f7d1a1c6cf89b50610789';
 
                         //require the Twilio module and create a REST client
                         var client = require('twilio')(accountSid, authToken);
-                         otp.Option()
-                         var code = otp.generate(secret);
+                        var code = otp.generate(secret);
                         
-                         console.log(secret)
-                         console.log(code)
+                        console.log(secret)
+                        console.log(code)    
                          
-                          var status = otp.check(code, secret);
-                         console.log(status);
+                        res.send("{sucess : 1, message : "+user+"}")
+                        
                        /* client.messages.create({
                             to: PhoneNumber,
                             from: '+14438254761',
@@ -223,8 +272,7 @@ router.post('/register',urlencodedParser, function(req, res) {
     
 });
 
-router.post('/lookup',urlencodedParser,function(req,res)
-{
+router.post('/lookup',urlencodedParser,function(req,res){
     
     console.log(req.body)
     var parmeters = req.body.Parmeters;   
@@ -331,8 +379,72 @@ router.post('/lookup',urlencodedParser,function(req,res)
                      }
              }
           }
-    )}
- );
+    )});
+
+router.post('/getCountryCode',urlencodedParser,function(req,res)
+          {
+    
+  var CountryCode = req.body.CountryCode;
+    
+    if(!CountryCode || !(CountryCode.length ==2 || CountryCode.length ==3))
+        {
+             res.send("{sucess : -1, message : 'No country' }")
+        }
+    
+    CountryCode = CountryCode.toUpperCase()
+    
+    if(CountryCode.length ==2)
+        {
+    
+            country.findOne({'ISO2' : CountryCode}).exec(function(err,countryResult)
+                 {
+                        if(err)
+                            {
+                               console.log(err)
+                               res.send("{sucess : 0}")
+                            }
+                        else
+                            {
+                                console.log(countryResult)
+                                if(countryResult)
+                                    {
+                                        res.send("{sucess : 0, 'Country' : "+countryResult+"}")
+                                    }
+                                    else
+                                    {
+                                             res.send("{sucess : -1, message : 'No country' }")
+                                    }
+                            }
+                    });
+            
+        }
+    if(CountryCode.length ==3)
+        {
+    
+            country.findOne({'ISO3' : CountryCode}).exec(function(err,countryResult)
+                 {
+                        if(err)
+                            {
+                               console.log(err)
+                               res.send("{sucess : 0}")
+                            }
+                        else
+                            {                                
+                                if(countryResult)
+                                    {
+                                        res.send("{sucess : 0, 'Country' : "+countryResult+"}")
+                                    }
+                                    else
+                                    {
+                                             res.send("{sucess : -1, message : 'No country' }")
+                                    }
+                            }
+                    });
+            
+        }
+        
+})
+
 
   
 

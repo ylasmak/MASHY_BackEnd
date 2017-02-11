@@ -5,7 +5,7 @@ var GeoJSON = require('mongoose-geojson-schema');
 var url = require("./../data_base/database_configuration");
 var Schema = mongoose.Schema;
 
-console.log(url);
+
 mongoose.Promise = global.Promise;
 mongoose.connect( url);
 
