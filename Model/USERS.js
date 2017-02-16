@@ -27,7 +27,8 @@ var USERS = new Schema({
   cercle: [CercleDef],
   location :GeojsonfeatureSchema,  
   activate_tracking :{ type : Boolean } , 
-  secret : String,    
+  secret : String,
+  CallingcountryCode : String,
   update_at: String
 });
 

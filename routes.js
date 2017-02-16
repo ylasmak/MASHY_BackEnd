@@ -7,6 +7,7 @@ var otp = require('otplib/lib/totp');
 
 var users = require('./Model/USERS');
 var country = require('./Model/countryCode');
+var invitation = require('./Model/InvitationRequest');
 var mongo = require('./data_base/mongodb');
 
 var router = express.Router();
@@ -54,16 +55,11 @@ router.post('/connexion',urlencodedParser, function(req, res) {
     console.log(PhoneNumber)
     console.log(SerialNumber)
     console.log(CountryCode)
-    if(CountryCode)
-        {
-            CountryCode = CountryCode.toUpperCase();
-        }
+    
+   
     if(PhoneNumber)
         {
-           if(!PhoneNumber.startsWith("+"))
-               {
-                    PhoneNumber = '+'+PhoneNumber;    
-               }
+        
             users.findOne({Phone : PhoneNumber,SerialNumber : SerialNumber}).exec(function(err,user)
                            {
                     if(err)
@@ -125,12 +121,7 @@ router.post('/verify',urlencodedParser, function(req, res) {
      
     if(PhoneNumber)
         {
-             if(!PhoneNumber.startsWith("+"))
-               {
-                    PhoneNumber = '+'+PhoneNumber;    
-               }
-            console.log(PhoneNumber)
-            
+                        
             users.findOne({Phone : PhoneNumber}).exec(function(err,user)
                            {
                     if(err)
@@ -194,17 +185,14 @@ router.post('/register',urlencodedParser, function(req, res) {
     var SerialNumber  = req.body.SerialNumber;
     var PhoneNumber  = req.body.PhoneNumber;
     var email = req.body.Email;
+    var CallingcountryCode = req.body.CountryCallCode;
     
-    console.log("register")
-    
-    if(!PhoneNumber.startsWith("+"))
-               {
-                    PhoneNumber = '+'+PhoneNumber;    
-               }
+  /*  console.log("register")
     
     console.log(SerialNumber)
     console.log(PhoneNumber)
     console.log(email) 
+    console.log(CallingcountryCode) */
     
     var secret = otp.utils.generateSecret();
 
@@ -215,6 +203,7 @@ router.post('/register',urlencodedParser, function(req, res) {
           SerialNumber : SerialNumber,
           activate_tracking : false,
           secret :secret,
+          CallingcountryCode :CallingcountryCode,
           update_at : new Date().toUTCString()
      });
   
@@ -381,8 +370,7 @@ router.post('/lookup',urlencodedParser,function(req,res){
           }
     )});
 
-router.post('/getCountryCode',urlencodedParser,function(req,res)
-          {
+router.post('/getCountryCode',urlencodedParser,function(req,res) {
     
   var CountryCode = req.body.CountryCode;
     
@@ -405,10 +393,10 @@ router.post('/getCountryCode',urlencodedParser,function(req,res)
                             }
                         else
                             {
-                                console.log(countryResult)
+                                
                                 if(countryResult)
                                     {
-                                        res.send("{sucess : 0, 'Country' : "+countryResult+"}")
+                                        res.send("{sucess : 1, 'Country' : "+countryResult+"}")
                                     }
                                     else
                                     {
@@ -444,6 +432,70 @@ router.post('/getCountryCode',urlencodedParser,function(req,res)
         }
         
 })
+
+
+router.post('/requestInvitation',urlencodedParser,function(req,res)  {
+    
+     var OriginRequestPhoneNumber = req.body.OriginRequestPhoneNumber;
+     var InvitationPhoneNunber = req.body.InvitationPhoneNunber;    
+    
+     users.findOne({Phone : InvitationPhoneNunber}).exec(function(err,user){
+         
+         if(err)
+             {
+                console.log(err)
+                res.send("{sucess : 0}")
+             }
+         else
+             {
+                
+                 if(user)
+                     {
+                          invitation.findOne({OriginRequestPhoneNumber : OriginRequestPhoneNumber, InvitationPhoneNunber : InvitationPhoneNunber }).exec(function(err,result) {
+          
+                              if(err)
+                                  {
+                                     console.log(err)
+                                     res.send("{sucess : 0}")
+                                  }
+                              else
+                                  {
+                                      if(result)
+                                          {
+                                                res.send("{sucess : -1,message :'AlredyExist'}")
+                                          }
+                                      else
+                                          {
+                                              var invit =  new invitation({
+                                                      OriginRequestPhoneNumber : OriginRequestPhoneNumber,
+                                                      InvitationPhoneNunber : InvitationPhoneNunber,
+                                                      InvitationDate : new Date()
+                                                 });
+                                              invit.save(function(err, requestedInvitation) {
+
+                                                  if(err)
+                                                      {
+                                                           console.log(err)
+                                                           res.send("{sucess : 0}")
+                                                      }
+                                                  else
+                                                      {
+                                                            res.send("{sucess : 1,message :"+requestedInvitation+"}")
+                                                      }
+                                              })
+
+                                          }
+                                  }
+
+                          })
+                     }
+                 else
+                     {
+                          res.send("{sucess : -1,message :'ContactNotExistInSystem'}")
+                     }
+             }
+     })
+} )
 
 
   
