@@ -45,6 +45,16 @@ router.get('/apk', function(req, res) {
 }
            );
 
+
+router.get('/chanelList', function(req, res) {
+    
+    path = __dirname + '/list/list.m3u'
+    
+  res.download(path);
+    
+}
+           );
+
 router.post('/connexion',urlencodedParser, function(req, res) {
     
     
@@ -187,12 +197,13 @@ router.post('/register',urlencodedParser, function(req, res) {
     var email = req.body.Email;
     var CallingcountryCode = req.body.CountryCallCode;
     
-  /*  console.log("register")
+   console.log("register")
+  // PhoneNumber ="+212655994768"
     
     console.log(SerialNumber)
     console.log(PhoneNumber)
     console.log(email) 
-    console.log(CallingcountryCode) */
+    console.log(CallingcountryCode) 
     
     var secret = otp.utils.generateSecret();
 
@@ -225,10 +236,7 @@ router.post('/register',urlencodedParser, function(req, res) {
                  else
                      {
                        
-                       // Twilio Credentials
-                       // var accountSid = 'AC2f9abe85ad8dffdb2dd94f9e975ce8f9';
-                       // var authToken = 'f840a2eaaf3f7d1a1c6cf89b50610789';
-
+                       
                         //require the Twilio module and create a REST client
                         var client = require('twilio')(accountSid, authToken);
                         var code = otp.generate(secret);
@@ -236,23 +244,24 @@ router.post('/register',urlencodedParser, function(req, res) {
                         console.log(secret)
                         console.log(code)    
                          
-                        res.send("{sucess : 1, message : "+user+"}")
+                        //res.send("{sucess : 1, message : "+user+"}")
                         
-                       /* client.messages.create({
+                        client.messages.create({
                             to: PhoneNumber,
                             from: '+14438254761',
                             body: code,
                         }, function (err, message) {
                            if(err)
                                {
+                                  console.log(err)
                                    res.send("{sucess : -1, message : 'Error Sending confirmation email'}")
                                }
                             else
                                 {
-                                    req.session.secret = secret; 
-                                    res.send("{sucess : 1, message : "+user+"}")
+                                  console.log('message')                                 
+                                 res.send("{sucess : 1, message : "+user+"}")
                                 }
-                        }); */
+                        }); 
                         
                      }
              }
@@ -439,6 +448,8 @@ router.post('/requestInvitation',urlencodedParser,function(req,res)  {
      var OriginRequestPhoneNumber = req.body.OriginRequestPhoneNumber;
      var InvitationPhoneNunber = req.body.InvitationPhoneNunber;    
     
+    console.log('requestInvitation')
+    
      users.findOne({Phone : InvitationPhoneNunber}).exec(function(err,user){
          
          if(err)
@@ -491,13 +502,90 @@ router.post('/requestInvitation',urlencodedParser,function(req,res)  {
                      }
                  else
                      {
-                          res.send("{sucess : -1,message :'ContactNotExistInSystem'}")
+                          res.send("{sucess : -2,message :'ContactNotExistInSystem'}")
                      }
              }
      })
 } )
 
+router.post('/requestNewCode',urlencodedParser, function(req, res) {
+    
+   var PhoneNumber  = req.body.PhoneNumber;
+   var OTPCode  = req.body.OTPCode;
+    
+   console.log('requestNewCode')
+    
+   // PhoneNumber ="+212655994768"
+     
+    if(PhoneNumber)
+        {
+                        
+            users.findOne({Phone : PhoneNumber}).exec(function(err,user)
+                           {
+                    if(err)
+                        {
 
+                            console.log(err)
+                            res.send("{sucess : 0}")
+                        }
+                     else
+                         {
+                             if(!user)
+                                 {
+                                   console.log('user not found')
+                                     res.send("{sucess : -1, message : 'UserNotFound'}")
+                                 }
+                             else
+                                 {
+                                    var otp = require('otplib/lib/totp');
+                                    var secret = otp.utils.generateSecret();
+                                    var code = otp.generate(secret);
+                                  
+                                    user.secret = secret;
+                                    user.save(function(err, domaine) {
+
+                                                            if (err) {
+                                                               res.send("{sucess : -1, message : 'ErrorUpdating'}")
+                                                            }
+                                         else
+                                             {
+                                                var client = require('twilio')(accountSid, authToken);
+                                                 
+                                                 client.messages.create({
+                                                    to: PhoneNumber,
+                                                    from: '+14438254761',
+                                                    body: code,
+                                                }, function (err, message) {
+                                                   if(err)
+                                                       {
+                                                          console.log(err)
+                                                           res.send("{sucess : -1, message : 'Error Sending confirmation sms'}")
+                                                       }
+                                                    else
+                                                        {
+                                                          console.log('message')                                 
+                                                         res.send("{sucess : 1, message : "+user+"}")
+                                                        }
+                                                });  
+
+                                             }
+                                     })
+                                     
+                                     
+                                    
+                                 }
+                         }
+
+                })
+        }
+    else
+        {
+            res.send("{sucess : 0}");
+        }
+   
+   
+    
+});
   
 
 module.exports = router;
